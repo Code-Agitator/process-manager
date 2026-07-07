@@ -21,8 +21,10 @@
 - **🪟 Windows 原生** — 基于 `wmic` / `netstat` / `tasklist`，无第三方依赖
 
 ## 📸 界面预览
-
-![截图](image.png)
+### 默认模式
+![截图](snapshot/image1.png)
+### 固定窗口模式
+![截图](snapshot/image2.png)
 
 ## 🚀 快速开始
 

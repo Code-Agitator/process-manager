@@ -7,7 +7,7 @@
   "version": "1.0.0",
   "main": "index.html",
   "preload": "preload/services.js",
-  "logo": "logo.png",
+  "logo": "logo.svg",
   "development": {
     "main": "http://localhost:5173"
   },
@@ -15,7 +15,7 @@
     {
       "code": "process",
       "explain": "快速搜索进程、端口、PID，支持一键 Kill",
-      "icon": "logo.png",
+      "icon": "logo.svg",
       "cmds": [
         "pid",
         "port",
