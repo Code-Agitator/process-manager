@@ -22,6 +22,16 @@
 
 ---
 
+
+## 📸 界面预览
+### 暗黑
+<img src="snapshot/image1.png" width="45%" />
+<img src="snapshot/image2.png" width="45%" />
+
+### 明亮
+<img src="snapshot/image3.png" width="45%" />
+<img src="snapshot/image4.png" width="45%" />
+
 ## ✨ 功能特性
 
 - **🔍 多维搜索** — 支持按进程名、PID、端口号、文件路径模糊搜索，一处输入全字段匹配
@@ -31,11 +41,6 @@
 - **🌙 暗色模式** — 跟随系统主题自适应
 - **🪟 Windows 原生** — 基于 `wmic` / `netstat` / `tasklist`，无第三方依赖
 
-## 📸 界面预览
-### 默认模式
-![截图](snapshot/image1.png)
-### 固定窗口模式
-![截图](snapshot/image2.png)
 
 ## 🚀 快速开始
 
