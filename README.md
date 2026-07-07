@@ -14,6 +14,19 @@
 
 ---
 
+## 💡 为什么选择 Process Port Manager？
+
+与常见的进程管理工具相比，本插件有以下优势：
+
+| | 常见进程管理工具 | Process Port Manager |
+|---|---|---|
+| **UI 风格** | 独立窗口，与宿主工具视觉割裂 | 无缝融入 ZTools，背景、字体、配色完全一致，如同原生功能 |
+| **信息展示** | 信息密集、字段繁多，查找效率低 | 只展示关键信息（进程名、PID、端口、路径），一目了然 |
+| **复制操作** | 需手动选中再右键复制 | 点击任意字段即刻复制，零摩擦 |
+| **开源自定义** | 闭源，无法修改 | MIT 开源，可自由修改、扩展、二次开发 |
+
+---
+
 ## ✨ 功能特性
 
 - **🔍 多维搜索** — 支持按进程名、PID、端口号、文件路径模糊搜索，一处输入全字段匹配
@@ -179,12 +192,6 @@ npm run build     # 构建
 
 欢迎通过 Issue 或 PR 贡献想法和改进！
 
-## 📚 相关资源
-
-- [ZTools 官方文档](https://github.com/ztool-center/ztools)
-- [ZTools API 类型](https://github.com/ztool-center/ztools-api-types)
-- [React 文档](https://react.dev/)
-- [Vite 文档](https://vitejs.dev/)
 
 ## 📄 开源协议
 
