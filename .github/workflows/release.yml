@@ -1,0 +1,33 @@
+name: Build and Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm i
+
+      - run: npm run build
+
+      - name: Get package name
+        id: pkg
+        run: echo "name=$(node -p 'require(\"./package.json\").name')" >> "$GITHUB_OUTPUT"
+
+      - name: Zip dist
+        run: cd dist && zip -r ../${{ steps.pkg.outputs.name }}-${{ github.ref_name }}.zip . && cd ..
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.pkg.outputs.name }}-${{ github.ref_name }}.zip
