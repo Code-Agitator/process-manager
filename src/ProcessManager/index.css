@@ -208,21 +208,25 @@
   transition: transform 0.3s ease;
 }
 
-.pm-notify {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 6px;
-  background: rgba(239, 68, 68, 0.12);
+.pm-hint-tip {
+  background: rgba(239, 68, 68, 0.08);
   color: #ef4444;
-  white-space: nowrap;
-  flex-shrink: 0;
-  animation: notifyIn 0.2s ease;
+  font-weight: 600;
 }
 
-@keyframes notifyIn {
-  from { opacity: 0; transform: scale(0.9); }
-  to { opacity: 1; transform: scale(1); }
+.pm-toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: #fff;
+  font-size: 12px;
+  padding: 6px 16px;
+  border-radius: 8px;
+  z-index: 1000;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .pm-modal-overlay {
@@ -374,9 +378,14 @@
     scrollbar-color: rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05);
   }
 
-  .pm-notify {
+  .pm-hint-tip {
     background: rgba(248, 81, 73, 0.15);
     color: #fca5a5;
+  }
+
+  .pm-toast {
+    background: #c9d1d9;
+    color: #0d1117;
   }
 
   .pm-footer {

@@ -37,10 +37,10 @@ export default function ProcessManager({ keyword }: Props) {
     startRef.current = Date.now()
   }, [lastUpdated])
 
-  const showToast = useCallback((msg: string, isError = false) => {
+  const showToast = useCallback((msg: string) => {
     setToast(msg)
     clearTimeout(toastTimer.current)
-    toastTimer.current = setTimeout(() => setToast(''), isError ? 3000 : 1500)
+    toastTimer.current = setTimeout(() => setToast(''), 1500)
   }, [])
 
   const copy = useCallback((text: string) => {
@@ -63,7 +63,7 @@ export default function ProcessManager({ keyword }: Props) {
       showToast(`已 Kill ${killModal.name} (PID: ${killModal.pid})`)
       refresh()
     } else {
-      showToast(`Kill 失败: ${result.error}`, true)
+      showToast(`Kill 失败: ${result.error}`)
     }
   }, [killModal, showToast, refresh])
 
@@ -87,7 +87,9 @@ export default function ProcessManager({ keyword }: Props) {
           <span className="pm-hint pm-hint-port">端口号</span>
           <span className="pm-hint pm-hint-path">文件路径</span>
         </div>
-        {toast && <div className="pm-notify">{toast}</div>}
+        <span className="pm-hint pm-hint-tip">右键可 Kill 进程</span>
+      </div>
+        {toast && <div className="pm-toast">{toast}</div>}
       </div>
 
       <div className="pm-body">
