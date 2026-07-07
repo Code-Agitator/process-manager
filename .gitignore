@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# vibe coding
+.agents
+.reasonix
+reasonix*
+.opencode
+skills-lock.json
+
