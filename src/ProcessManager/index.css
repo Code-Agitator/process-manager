@@ -36,6 +36,7 @@
   flex: 1;
   overflow-y: auto;
   padding: 4px 0;
+  width: 100%;
 }
 
 .pm-body::-webkit-scrollbar {
