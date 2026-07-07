@@ -25,12 +25,12 @@
 
 ## 📸 界面预览
 ### 暗黑
-<img src="snapshot/image1.png" width="45%" />
-<img src="snapshot/image2.png" width="45%" />
+<img src="snapshot/image1.png" />
+
 
 ### 明亮
-<img src="snapshot/image3.png" width="45%" />
-<img src="snapshot/image4.png" width="45%" />
+<img src="snapshot/image3.png"  />
+
 
 ## ✨ 功能特性
 
@@ -124,12 +124,12 @@ npm run build
 
 ### 主要依赖
 
-| 模块 | 职责 |
-|------|------|
-| `services.js` | 通过 `wmic` 枚举进程、`netstat -ano` 扫描端口、`taskkill /F` 终止进程 |
-| `useProcessData.ts` | 管理进程数据状态，5 秒缓存 TTL，自动/手动刷新 |
-| `search.ts` | 多字段模糊匹配：进程名、PID、端口、路径 |
-| `ProcessManager/index.tsx` | 主界面：搜索栏、结果列表、Kill 按钮、Toast 提示 |
+| 模块                       | 职责                                                                  |
+| -------------------------- | --------------------------------------------------------------------- |
+| `services.js`              | 通过 `wmic` 枚举进程、`netstat -ano` 扫描端口、`taskkill /F` 终止进程 |
+| `useProcessData.ts`        | 管理进程数据状态，5 秒缓存 TTL，自动/手动刷新                         |
+| `search.ts`                | 多字段模糊匹配：进程名、PID、端口、路径                               |
+| `ProcessManager/index.tsx` | 主界面：搜索栏、结果列表、Kill 按钮、Toast 提示                       |
 
 ## 🔧 插件配置
 
