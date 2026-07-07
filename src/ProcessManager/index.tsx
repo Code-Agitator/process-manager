@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { FiX, FiRefreshCw } from 'react-icons/fi'
+import { FiRefreshCw } from 'react-icons/fi'
 import './index.css'
 import { searchProcesses } from './search'
 import { useProcessData } from './useProcessData'
@@ -14,7 +14,6 @@ export default function ProcessManager({ keyword }: Props) {
   const { processes, loading, refresh, lastUpdated } = useProcessData()
   const [toast, setToast] = useState('')
   const [killPid, setKillPid] = useState<number | null>(null)
-  const [killModal, setKillModal] = useState<{ pid: number; name: string } | null>(null)
   const barRef = useRef<HTMLDivElement>(null)
   const startRef = useRef(0)
   const rafRef = useRef(0)
@@ -37,39 +36,33 @@ export default function ProcessManager({ keyword }: Props) {
     startRef.current = Date.now()
   }, [lastUpdated])
 
-  const showToast = useCallback((msg: string) => {
+  const showToast = useCallback((msg: string, isError = false) => {
     setToast(msg)
     clearTimeout(toastTimer.current)
-    toastTimer.current = setTimeout(() => setToast(''), 1500)
+    toastTimer.current = setTimeout(() => setToast(''), isError ? 3000 : 1500)
   }, [])
 
   const copy = useCallback((text: string) => {
     navigator.clipboard.writeText(text).then(() => showToast('已复制: ' + text))
   }, [showToast])
 
-  const confirmKill = useCallback((pid: number, name: string) => {
-    setKillModal({ pid, name })
-  }, [])
-
-  const executeKill = useCallback(async () => {
-    if (!killModal) return
-
-    setKillPid(killModal.pid)
-    const result = await window.services.killProcess(killModal.pid)
+  const executeKill = useCallback(async (pid: number, name: string) => {
+    setKillPid(pid)
+    const result = await window.services.killProcess(pid)
     setKillPid(null)
-    setKillModal(null)
 
     if (result.success) {
-      showToast(`已 Kill 进程 ${killModal.name} (PID: ${killModal.pid})`)
+      showToast(`已 Kill ${name} (PID: ${pid})`)
       refresh()
     } else {
-      showToast(`Kill 失败: ${result.error}`)
+      showToast(`Kill 失败: ${result.error}`, true)
     }
-  }, [killModal, showToast, refresh])
+  }, [showToast, refresh])
 
-  const cancelKill = useCallback(() => {
-    setKillModal(null)
-  }, [])
+  const handleContextMenu = useCallback((e: React.MouseEvent, pid: number, name: string) => {
+    e.preventDefault()
+    executeKill(pid, name)
+  }, [executeKill])
 
   const filtered = searchProcesses(keyword, processes)
 
@@ -82,6 +75,7 @@ export default function ProcessManager({ keyword }: Props) {
           <span className="pm-hint pm-hint-port">端口号</span>
           <span className="pm-hint pm-hint-path">文件路径</span>
         </div>
+        {toast && <div className="pm-notify">{toast}</div>}
       </div>
 
       <div className="pm-body">
@@ -96,7 +90,11 @@ export default function ProcessManager({ keyword }: Props) {
         )}
 
         {filtered.map(p => (
-          <div className="pm-item" key={p.pid}>
+          <div
+            className="pm-item"
+            key={p.pid}
+            onContextMenu={(e) => handleContextMenu(e, p.pid, p.name)}
+          >
             <div className="pm-item-top">
               <div className="pm-item-info">
                 <div className="pm-item-row1">
@@ -113,13 +111,6 @@ export default function ProcessManager({ keyword }: Props) {
                   }
                 </div>
               </div>
-              <button
-                className="pm-kill"
-                onClick={() => confirmKill(p.pid, p.name)}
-                disabled={killPid === p.pid}
-              >
-                <FiX size={14} />
-              </button>
             </div>
           </div>
         ))}
@@ -135,23 +126,6 @@ export default function ProcessManager({ keyword }: Props) {
           </button>
         </span>
       </div>
-
-      {killModal && (
-        <div className="pm-modal-overlay" onClick={cancelKill}>
-          <div className="pm-modal" onClick={e => e.stopPropagation()}>
-            <div className="pm-modal-title">确认 Kill 进程</div>
-            <div className="pm-modal-content">
-              确定要 Kill 进程 <strong>{killModal.name}</strong> (PID: {killModal.pid}) 吗？
-            </div>
-            <div className="pm-modal-actions">
-              <button className="pm-modal-btn pm-modal-btn-cancel" onClick={cancelKill}>取消</button>
-              <button className="pm-modal-btn pm-modal-btn-confirm" onClick={executeKill}>确认</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {toast && <div className="pm-toast">{toast}</div>}
     </div>
   )
 }

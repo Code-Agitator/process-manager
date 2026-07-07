@@ -12,6 +12,10 @@
   padding: 10px 16px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .pm-hints {
@@ -144,36 +148,6 @@
   margin-top: 5px;
 }
 
-.pm-kill {
-  background: none;
-  color: #999;
-  border: 1.5px solid rgba(0, 0, 0, 0.15);
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.pm-kill:hover {
-  border-color: #ef4444;
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.1);
-  transform: scale(1.05);
-  transition: all 0.2s ease;
-}
-
-.pm-kill:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
 .pm-footer {
   display: flex;
   justify-content: space-between;
@@ -234,112 +208,21 @@
   transition: transform 0.3s ease;
 }
 
-.pm-toast {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #333;
-  color: #fff;
-  font-size: 12px;
-  padding: 6px 16px;
-  border-radius: 8px;
-  z-index: 1000;
+.pm-notify {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
   white-space: nowrap;
-  pointer-events: none;
+  flex-shrink: 0;
+  animation: notifyIn 0.2s ease;
 }
 
-.pm-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-  animation: fadeIn 0.15s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.pm-modal {
-  background: #fff;
-  border-radius: 12px;
-  padding: 20px;
-  min-width: 280px;
-  max-width: 360px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  animation: slideIn 0.2s ease;
-}
-
-@keyframes slideIn {
-  from { 
-    opacity: 0;
-    transform: scale(0.95) translateY(-10px);
-  }
-  to { 
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-.pm-modal-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: #1a1a2e;
-  margin-bottom: 12px;
-}
-
-.pm-modal-content {
-  font-size: 13px;
-  color: #666;
-  line-height: 1.5;
-  margin-bottom: 20px;
-}
-
-.pm-modal-content strong {
-  color: #333;
-  font-weight: 600;
-}
-
-.pm-modal-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-}
-
-.pm-modal-btn {
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: none;
-}
-
-.pm-modal-btn-cancel {
-  background: #f0f0f0;
-  color: #666;
-}
-
-.pm-modal-btn-cancel:hover {
-  background: #e0e0e0;
-}
-
-.pm-modal-btn-confirm {
-  background: #ef4444;
-  color: #fff;
-}
-
-.pm-modal-btn-confirm:hover {
-  background: #dc2626;
+@keyframes notifyIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -398,17 +281,9 @@
     scrollbar-color: rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05);
   }
 
-  .pm-kill {
-    color: #8b949e;
-    border-color: rgba(255, 255, 255, 0.2);
-  }
-
-  .pm-kill:hover {
-    border-color: #ef4444;
+  .pm-notify {
+    background: rgba(248, 81, 73, 0.15);
     color: #fca5a5;
-    background: rgba(239, 68, 68, 0.15);
-    transform: scale(1.05);
-    transition: all 0.2s ease;
   }
 
   .pm-footer {
@@ -434,43 +309,5 @@
     opacity: 0.7;
     transform: rotate(180deg);
     transition: transform 0.3s ease;
-  }
-
-  .pm-toast {
-    background: #c9d1d9;
-    color: #0d1117;
-  }
-
-  .pm-modal {
-    background: #161b22;
-  }
-
-  .pm-modal-title {
-    color: #c9d1d9;
-  }
-
-  .pm-modal-content {
-    color: #8b949e;
-  }
-
-  .pm-modal-content strong {
-    color: #c9d1d9;
-  }
-
-  .pm-modal-btn-cancel {
-    background: rgba(255, 255, 255, 0.1);
-    color: #8b949e;
-  }
-
-  .pm-modal-btn-cancel:hover {
-    background: rgba(255, 255, 255, 0.15);
-  }
-
-  .pm-modal-btn-confirm {
-    background: #da3633;
-  }
-
-  .pm-modal-btn-confirm:hover {
-    background: #f85149;
   }
 }
