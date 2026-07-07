@@ -1,24 +1,23 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { FiX, FiRefreshCw } from 'react-icons/fi'
 import './index.css'
 import { searchProcesses } from './search'
 import { useProcessData } from './useProcessData'
 
 const CACHE_TTL = 5000
 
-export default function ProcessManager() {
+interface Props {
+  keyword: string
+}
+
+export default function ProcessManager({ keyword }: Props) {
   const { processes, loading, refresh, lastUpdated } = useProcessData()
-  const [keyword, setKeyword] = useState('')
   const [toast, setToast] = useState('')
   const [killPid, setKillPid] = useState<number | null>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
   const barRef = useRef<HTMLDivElement>(null)
   const startRef = useRef(0)
   const rafRef = useRef(0)
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
-
-  useEffect(() => {
-    inputRef.current?.focus()
-  }, [])
 
   useEffect(() => {
     const fill = barRef.current
@@ -67,18 +66,6 @@ export default function ProcessManager() {
   return (
     <div className="pm">
       <div className="pm-header">
-        <h2 className="pm-title">进程端口管理</h2>
-        <div className="pm-search">
-          <span className="pm-search-icon">🔍</span>
-          <input
-            ref={inputRef}
-            className="pm-search-input"
-            type="text"
-            placeholder="输入 PID / 端口 / 进程名 / 路径搜索..."
-            value={keyword}
-            onChange={e => setKeyword(e.target.value)}
-          />
-        </div>
         <div className="pm-hints">
           <span className="pm-hint pm-hint-name">进程名</span>
           <span className="pm-hint pm-hint-pid">PID</span>
@@ -120,7 +107,9 @@ export default function ProcessManager() {
                 className="pm-kill"
                 onClick={() => confirmKill(p.pid, p.name)}
                 disabled={killPid === p.pid}
-              >✕</button>
+              >
+                <FiX size={14} />
+              </button>
             </div>
           </div>
         ))}
@@ -131,7 +120,9 @@ export default function ProcessManager() {
         <span className="pm-footer-right">
           <span className="pm-updated">{lastUpdated || '--:--:--'}</span>
           <span className="pm-progress-tag"><span className="pm-progress-fill" ref={barRef} /></span>
-          <button className="pm-refresh" onClick={refresh}>↻</button>
+          <button className="pm-refresh" onClick={refresh}>
+            <FiRefreshCw size={13} />
+          </button>
         </span>
       </div>
 
