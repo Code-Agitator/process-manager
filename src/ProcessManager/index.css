@@ -68,7 +68,7 @@
 }
 
 .pm-item {
-  padding: 12px 16px;
+  padding: 12px 0;
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   transition: background 0.15s;
 }
@@ -86,6 +86,7 @@
   justify-content: space-between;
   align-items: center;
   gap: 10px;
+  padding: 0 16px;
 }
 
 .pm-item-info {
