@@ -89,8 +89,8 @@ export default function ProcessManager({ keyword }: Props) {
         </div>
         <span className="pm-hint pm-hint-tip">右键可 Kill 进程</span>
       </div>
-        {toast && <div className="pm-toast">{toast}</div>}
-      </div>
+
+      {toast && <div className="pm-toast">{toast}</div>}
 
       <div className="pm-body">
         {loading && processes.length === 0 && (
