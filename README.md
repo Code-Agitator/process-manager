@@ -1,6 +1,9 @@
-# 进程端口管理 (Process Manager)
+<p align="center">
+  <img src="public/logo.svg" alt="Process Port Manager Logo" width="120" />
+</p>
 
-> 快速搜索进程、端口、PID、路径，支持一键 Kill 进程 — 为 ZTools 打造的插件。
+<h1 align="center">进程端口管理</h1>
+<p align="center"><em>Process Port Manager — 为 ZTools 打造的进程端口管理插件</em></p>
 
 ![Platform](https://img.shields.io/badge/platform-win32-blue)
 ![React](https://img.shields.io/badge/React-19-61DAFB)
@@ -55,7 +58,7 @@ npm run build
 ```
 .
 ├── public/
-│   ├── logo.png                  # 插件图标
+│   ├── logo.svg                  # 插件图标（SVG）
 │   ├── plugin.json               # 插件配置（功能指令、平台等）
 │   └── preload/
 │       └── services.js           # Node.js 层：进程枚举、端口扫描、Kill
