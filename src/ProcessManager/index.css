@@ -44,21 +44,21 @@
 }
 
 .pm-body::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .pm-body::-webkit-scrollbar-thumb {
-  background: #d0d0d0;
+  background: rgba(0, 0, 0, 0.2);
   border-radius: 3px;
 }
 
 .pm-body::-webkit-scrollbar-thumb:hover {
-  background: #b0b0b0;
+  background: rgba(0, 0, 0, 0.35);
 }
 
 .pm-body {
   scrollbar-width: thin;
-  scrollbar-color: #d0d0d0 transparent;
+  scrollbar-color: rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.05);
 }
 
 .pm-empty {
@@ -386,19 +386,19 @@
   }
 
   .pm-body::-webkit-scrollbar-track {
-    background: transparent;
+    background: rgba(255, 255, 255, 0.05);
   }
 
   .pm-body::-webkit-scrollbar-thumb {
-    background: #30363d;
+    background: rgba(255, 255, 255, 0.2);
   }
 
   .pm-body::-webkit-scrollbar-thumb:hover {
-    background: #484f58;
+    background: rgba(255, 255, 255, 0.35);
   }
 
   .pm-body {
-    scrollbar-color: #30363d transparent;
+    scrollbar-color: rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05);
   }
 
   .pm-kill {
