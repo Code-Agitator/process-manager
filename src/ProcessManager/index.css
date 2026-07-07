@@ -10,7 +10,7 @@
 
 .pm-header {
   padding: 10px 16px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   flex-shrink: 0;
 }
 
@@ -30,7 +30,7 @@
 .pm-hint-name { background: #e8eaf6; color: #283593; }
 .pm-hint-pid  { background: #f3e8ff; color: #7c3aed; }
 .pm-hint-port { background: #eef2ff; color: #4f6ef7; }
-.pm-hint-path { background: #f0f0f0; color: #888; }
+.pm-hint-path { background: rgba(0, 0, 0, 0.06); color: #888; }
 
 .pm-body {
   flex: 1;
@@ -69,12 +69,12 @@
 
 .pm-item {
   padding: 12px 16px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   transition: background 0.15s;
 }
 
 .pm-item:hover {
-  background: #fafafa;
+  background: rgba(0, 0, 0, 0.03);
 }
 
 .pm-item:last-child {
@@ -118,7 +118,7 @@
 .pm-tag-name { background: #e8eaf6; color: #283593; }
 .pm-tag-pid  { background: #f3e8ff; color: #7c3aed; }
 .pm-tag-port { background: #eef2ff; color: #4f6ef7; }
-.pm-tag-none { background: #f0f0f0; color: #999; cursor: default; }
+.pm-tag-none { background: rgba(0, 0, 0, 0.06); color: #999; cursor: default; }
 
 .pm-path {
   font-size: 11px;
@@ -135,7 +135,7 @@
 }
 
 .pm-path:hover {
-  background: #f0f0f0;
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .pm-tags {
@@ -147,8 +147,8 @@
 
 .pm-kill {
   background: none;
-  color: #ccc;
-  border: 1.5px solid #e0e0e0;
+  color: #999;
+  border: 1.5px solid rgba(0, 0, 0, 0.15);
   border-radius: 8px;
   padding: 8px 12px;
   font-size: 14px;
@@ -165,7 +165,7 @@
 .pm-kill:hover {
   border-color: #ef4444;
   color: #ef4444;
-  background: #fef2f2;
+  background: rgba(239, 68, 68, 0.1);
   transform: scale(1.05);
   transition: all 0.2s ease;
 }
@@ -180,7 +180,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 10px 16px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
   font-size: 11px;
   color: #b0b0c0;
   flex-shrink: 0;
@@ -350,37 +350,37 @@
   }
 
   .pm-header {
-    border-bottom-color: #21262d;
+    border-bottom-color: rgba(255, 255, 255, 0.1);
   }
 
-  .pm-hint-name { background: #1a3a2a; color: #7ee787; }
-  .pm-hint-pid  { background: #3a2a1a; color: #d29922; }
-  .pm-hint-port { background: #1a2a3a; color: #58a6ff; }
-  .pm-hint-path { background: #2a2a2a; color: #8b949e; }
+  .pm-hint-name { background: rgba(126, 231, 135, 0.15); color: #7ee787; }
+  .pm-hint-pid  { background: rgba(210, 153, 34, 0.15); color: #d29922; }
+  .pm-hint-port { background: rgba(88, 166, 255, 0.15); color: #58a6ff; }
+  .pm-hint-path { background: rgba(255, 255, 255, 0.1); color: #8b949e; }
 
   .pm-empty {
     color: #8b949e;
   }
 
   .pm-item {
-    border-bottom-color: #21262d;
+    border-bottom-color: rgba(255, 255, 255, 0.1);
   }
 
   .pm-item:hover {
-    background: #161b22;
+    background: rgba(255, 255, 255, 0.05);
   }
 
-  .pm-tag-name { background: #1a3a2a; color: #7ee787; }
-  .pm-tag-pid  { background: #3a2a1a; color: #d29922; }
-  .pm-tag-port { background: #1a2a3a; color: #58a6ff; }
-  .pm-tag-none { background: #2a2a2a; color: #8b949e; }
+  .pm-tag-name { background: rgba(126, 231, 135, 0.15); color: #7ee787; }
+  .pm-tag-pid  { background: rgba(210, 153, 34, 0.15); color: #d29922; }
+  .pm-tag-port { background: rgba(88, 166, 255, 0.15); color: #58a6ff; }
+  .pm-tag-none { background: rgba(255, 255, 255, 0.1); color: #8b949e; }
 
   .pm-path {
     color: #8b949e;
   }
 
   .pm-path:hover {
-    background: #21262d;
+    background: rgba(255, 255, 255, 0.08);
   }
 
   .pm-body::-webkit-scrollbar-track {
@@ -400,20 +400,20 @@
   }
 
   .pm-kill {
-    color: #484f58;
-    border-color: #30363d;
+    color: #8b949e;
+    border-color: rgba(255, 255, 255, 0.2);
   }
 
   .pm-kill:hover {
     border-color: #ef4444;
     color: #fca5a5;
-    background: #3a1a1a;
+    background: rgba(239, 68, 68, 0.15);
     transform: scale(1.05);
     transition: all 0.2s ease;
   }
 
   .pm-footer {
-    border-top-color: #21262d;
+    border-top-color: rgba(255, 255, 255, 0.1);
     color: #8b949e;
   }
 
@@ -421,7 +421,7 @@
     color: #484f58;
   }
   .pm-progress-tag {
-    background: #1a3a2a;
+    background: rgba(255, 255, 255, 0.1);
   }
   .pm-progress-tag .pm-progress-fill {
     background: linear-gradient(90deg, #58a6ff, #7ee787);
@@ -459,12 +459,12 @@
   }
 
   .pm-modal-btn-cancel {
-    background: #21262d;
+    background: rgba(255, 255, 255, 0.1);
     color: #8b949e;
   }
 
   .pm-modal-btn-cancel:hover {
-    background: #30363d;
+    background: rgba(255, 255, 255, 0.15);
   }
 
   .pm-modal-btn-confirm {
