@@ -18,30 +18,9 @@ export function searchProcesses(keyword: string, processes: ProcessInfo[]): Proc
   const kw = keyword.trim()
 
   if (!kw) {
-    // 无搜索词：仅按端口/路径排序
     return [...processes].sort(compareByPortPath)
   }
 
-  const isNumeric = /^\d+$/.test(kw)
-  const hasPathSep = /[/\\]/.test(kw)
-  const isExe = /\.exe$/i.test(kw)
-  const multiNums = kw.match(/\d+/g)
-
-  if (isNumeric) {
-    const num = parseInt(kw, 10)
-    return processes
-      .filter(p => p.pid === num || p.ports.includes(num))
-      .sort(compareByPortPath)
-  }
-
-  if (multiNums && multiNums.length > 1) {
-    const nums = multiNums.map(Number)
-    return processes
-      .filter(p => nums.includes(p.pid) || p.ports.some(port => nums.includes(port)))
-      .sort(compareByPortPath)
-  }
-
-  // 文本搜索：匹配度为主排序，端口/路径为 tie-breaker
   const lower = kw.toLowerCase()
 
   return processes
@@ -49,18 +28,20 @@ export function searchProcesses(keyword: string, processes: ProcessInfo[]): Proc
       let score = -1
       const nameLower = p.name.toLowerCase()
       const pathLower = p.path.toLowerCase()
+      const pidStr = String(p.pid)
 
-      if (isExe || hasPathSep) {
-        if (nameLower === lower) score = 100
-        else if (nameLower.startsWith(lower)) score = 80
-        else if (pathLower.includes(lower)) score = 70
-        else if (nameLower.includes(lower)) score = 50
-      } else {
-        if (nameLower === lower) score = 100
-        else if (nameLower.startsWith(lower)) score = 80
-        else if (nameLower.includes(lower)) score = 50
-        else if (pathLower.includes(lower)) score = 40
-      }
+      // PID 精确匹配
+      if (pidStr === kw) return { process: p, score: 110 }
+
+      // PID/端口包含匹配
+      if (pidStr.includes(kw)) score = Math.max(score, 90)
+      if (p.ports.some(port => String(port).includes(kw))) score = Math.max(score, 85)
+
+      // 名称/路径匹配
+      if (nameLower === lower) score = Math.max(score, 100)
+      else if (nameLower.startsWith(lower)) score = Math.max(score, 80)
+      else if (nameLower.includes(lower)) score = Math.max(score, 60)
+      else if (pathLower.includes(lower)) score = Math.max(score, 50)
 
       return { process: p, score }
     })
