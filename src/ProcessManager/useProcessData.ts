@@ -25,9 +25,9 @@ export function useProcessData() {
   const [lastUpdated, setLastUpdated] = useState('')
   const lastFetchRef = useRef(0)
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (force?: boolean) => {
     const now = Date.now()
-    if (now - lastFetchRef.current < CACHE_TTL) return
+    if (!force && now - lastFetchRef.current < CACHE_TTL) return
 
     if (!window.services?.listProcesses) {
       console.warn('services not available')

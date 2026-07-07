@@ -2,14 +2,14 @@ const { exec, spawn } = require('node:child_process')
 
 function execAsync(cmd, timeout) {
   return new Promise((resolve) => {
-    exec(cmd, { encoding: 'utf-8', timeout }, (err, stdout) => {
+    exec(cmd, { timeout }, (err, stdout) => {
       resolve(err ? '' : stdout)
     })
   })
 }
 
 function parseWmicCsv(output) {
-  const lines = output.trim().split('\n')
+  const lines = output.trim().replace(/\r/g, '').split('\n').filter(Boolean)
   if (lines.length < 2) return []
   const header = lines[0].split(',').map(h => h.trim().toLowerCase())
   const nameIdx = header.indexOf('name')
@@ -26,11 +26,11 @@ function parseWmicCsv(output) {
       pid: parseInt(parts[pidIdx], 10) || 0,
       path: (parts[pathIdx] || '').trim()
     }
-  }).filter(p => p && p.pid > 0)
+  }).filter(p => p.pid > 0)
 }
 
 function parseNetstat(output) {
-  const lines = output.trim().split('\n')
+  const lines = output.trim().replace(/\r/g, '').split('\n').filter(Boolean)
   const ports = []
   for (const line of lines) {
     const parts = line.trim().split(/\s+/)
@@ -52,7 +52,7 @@ window.services = {
     if (raw) return parseWmicCsv(raw)
     raw = await execAsync('tasklist /FO CSV /NH', 5000)
     if (!raw) return []
-    const lines = raw.trim().split('\n')
+    const lines = raw.trim().replace(/\r/g, '').split('\n').filter(Boolean)
     return lines.map(line => {
       const parts = line.replace(/^"|"$/g, '').split('","')
       return { name: parts[0] || '', pid: parseInt(parts[1], 10) || 0, path: '' }
@@ -72,7 +72,6 @@ window.services = {
 
     return new Promise((resolve) => {
       const child = spawn('taskkill', ['/PID', String(pid), '/F'], {
-        encoding: 'utf-8',
         timeout: 3000,
         stdio: ['ignore', 'pipe', 'pipe']
       })

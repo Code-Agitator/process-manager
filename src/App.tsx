@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import ProcessManager from './ProcessManager'
 
 export default function App() {
-  const [route, setRoute] = useState('')
+  const [_, setRoute] = useState('')
   const [keyword, setKeyword] = useState('')
 
   useEffect(() => {
@@ -23,7 +23,6 @@ export default function App() {
     })
   }, [])
 
-  if (route === 'process') return <ProcessManager keyword={keyword} />
+  return <ProcessManager keyword={keyword} />
 
-  return null
 }

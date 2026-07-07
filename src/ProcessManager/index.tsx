@@ -13,8 +13,8 @@ interface Props {
 export default function ProcessManager({ keyword }: Props) {
   const { processes, loading, refresh, lastUpdated } = useProcessData()
   const [toast, setToast] = useState('')
-  const [killPid, setKillPid] = useState<number | null>(null)
   const [killModal, setKillModal] = useState<{ pid: number; name: string } | null>(null)
+  const [killing, setKilling] = useState(false)
   const barRef = useRef<HTMLDivElement>(null)
   const startRef = useRef(0)
   const rafRef = useRef(0)
@@ -52,24 +52,25 @@ export default function ProcessManager({ keyword }: Props) {
   }, [])
 
   const executeKill = useCallback(async () => {
-    if (!killModal) return
+    if (!killModal || killing) return
 
-    setKillPid(killModal.pid)
+    setKilling(true)
     const result = await window.services.killProcess(killModal.pid)
-    setKillPid(null)
+    setKilling(false)
     setKillModal(null)
 
     if (result.success) {
       showToast(`已 Kill ${killModal.name} (PID: ${killModal.pid})`)
-      refresh()
+      refresh(true)
     } else {
       showToast(`Kill 失败: ${result.error}`)
     }
-  }, [killModal, showToast, refresh])
+  }, [killModal, killing, showToast, refresh])
 
   const cancelKill = useCallback(() => {
+    if (killing) return
     setKillModal(null)
-  }, [])
+  }, [killing])
 
   const handleContextMenu = useCallback((e: React.MouseEvent, pid: number, name: string) => {
     e.preventDefault()
@@ -135,22 +136,27 @@ export default function ProcessManager({ keyword }: Props) {
         <span className="pm-footer-right">
           <span className="pm-updated">{lastUpdated || '--:--:--'}</span>
           <span className="pm-progress-tag"><span className="pm-progress-fill" ref={barRef} /></span>
-          <button className="pm-refresh" onClick={refresh}>
+          <button className="pm-refresh" onClick={() => refresh(true)}>
             <FiRefreshCw size={13} />
           </button>
         </span>
       </div>
 
       {killModal && (
-        <div className="pm-modal-overlay" onClick={cancelKill}>
+        <div className="pm-modal-overlay" onClick={killing ? undefined : cancelKill}>
           <div className="pm-modal" onClick={e => e.stopPropagation()}>
             <div className="pm-modal-title">确认 Kill 进程</div>
             <div className="pm-modal-content">
-              确定要 Kill 进程 <strong>{killModal.name}</strong> (PID: {killModal.pid}) 吗？
+              {killing
+                ? <>正在 Kill <strong>{killModal.name}</strong> (PID: {killModal.pid})...</>
+                : <>确定要 Kill 进程 <strong>{killModal.name}</strong> (PID: {killModal.pid}) 吗？</>
+              }
             </div>
             <div className="pm-modal-actions">
-              <button className="pm-modal-btn pm-modal-btn-cancel" onClick={cancelKill}>取消</button>
-              <button className="pm-modal-btn pm-modal-btn-confirm" onClick={executeKill}>确认</button>
+              <button className="pm-modal-btn pm-modal-btn-cancel" onClick={cancelKill} disabled={killing}>取消</button>
+              <button className="pm-modal-btn pm-modal-btn-confirm" onClick={executeKill} disabled={killing}>
+                {killing ? '正在 Kill...' : '确认'}
+              </button>
             </div>
           </div>
         </div>
