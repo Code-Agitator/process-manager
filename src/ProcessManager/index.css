@@ -37,6 +37,8 @@
   overflow-y: auto;
   padding: 4px 0;
   width: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.05);
 }
 
 .pm-body::-webkit-scrollbar {
@@ -54,11 +56,6 @@
 
 .pm-body::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.35);
-}
-
-.pm-body {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.05);
 }
 
 .pm-empty {
