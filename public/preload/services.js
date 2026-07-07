@@ -1,4 +1,4 @@
-const { exec } = require('node:child_process')
+const { exec, spawn } = require('node:child_process')
 
 function execAsync(cmd, timeout) {
   return new Promise((resolve) => {
@@ -65,14 +65,35 @@ window.services = {
   },
 
   async killProcess(pid) {
+    // 严格校验 pid 为正整数
+    if (!Number.isInteger(pid) || pid <= 0) {
+      return { success: false, error: '无效的 PID' }
+    }
+
     return new Promise((resolve) => {
-      exec(`taskkill /PID ${pid} /F`, { encoding: 'utf-8', timeout: 3000 }, (err) => {
-        if (err) {
-          const msg = err.stderr || err.message || '未知错误'
-          resolve({ success: false, error: msg.trim() })
-        } else {
+      const child = spawn('taskkill', ['/PID', String(pid), '/F'], {
+        encoding: 'utf-8',
+        timeout: 3000,
+        stdio: ['ignore', 'pipe', 'pipe']
+      })
+
+      let stderr = ''
+      child.stderr.on('data', (data) => {
+        stderr += data.toString()
+      })
+
+      child.on('close', (code) => {
+        if (code === 0) {
           resolve({ success: true })
+        } else {
+          console.error('Kill process failed:', stderr)
+          resolve({ success: false, error: 'Kill 失败' })
         }
+      })
+
+      child.on('error', (err) => {
+        console.error('Kill process error:', err)
+        resolve({ success: false, error: 'Kill 失败' })
       })
     })
   }
