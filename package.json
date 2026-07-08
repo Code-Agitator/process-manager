@@ -1,8 +1,10 @@
 {
   "name": "process-manager",
-  "version": "1.0.0",
-  "description": "",
+  "version": "1.0.1",
+  "description": "快速搜索进程、端口、PID、路径，支持一键 Kill 进程，支持深色模式",
   "type": "module",
+  "author": "Agitator",
+  "homepage": "https://github.com/Code-Agitator/process-manager",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build"
