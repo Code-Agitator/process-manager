@@ -1,9 +1,11 @@
 const { exec, spawn } = require('node:child_process')
 
+const iconv = require('iconv-lite')
+
 function execAsync(cmd, timeout) {
   return new Promise((resolve) => {
-    exec(cmd, { timeout }, (err, stdout) => {
-      resolve(err ? '' : stdout)
+    exec(cmd, { timeout, encoding: 'buffer' }, (err, stdout) => {
+      resolve(err ? '' : iconv.decode(stdout, 'gbk'))
     })
   })
 }

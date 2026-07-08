@@ -2,12 +2,10 @@ import { useEffect, useState } from 'react'
 import ProcessManager from './ProcessManager'
 
 export default function App() {
-  const [_, setRoute] = useState('')
   const [keyword, setKeyword] = useState('')
 
   useEffect(() => {
     window.ztools.onPluginEnter((action) => {
-      setRoute(action.code)
       if (action.code === 'process') {
         setKeyword('')
         window.ztools.setSubInput(
@@ -17,7 +15,6 @@ export default function App() {
       }
     })
     window.ztools.onPluginOut(() => {
-      setRoute('')
       setKeyword('')
       window.ztools.removeSubInput()
     })
