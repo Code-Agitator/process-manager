@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.0.2] — 2026-08-29
+
+### 🐛 修复
+
+- **iconv-lite 加载失败** — 使用 esbuild 将 `iconv-lite` 打包进 `preload/services.js`，修复 build 模式下 ZTools 无法加载 `iconv-lite` 模块的问题
+
+### 🧹 优化
+
+- 新增 `esbuild` 作为 devDependency，build 脚本自动将 preload 脚本及其依赖打包为单文件
+
 ## [1.0.1] — 2026-07-08
 
 ### 🐛 修复
