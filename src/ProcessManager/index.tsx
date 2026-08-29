@@ -2,9 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { FiRefreshCw } from 'react-icons/fi'
 import './index.css'
 import { searchProcesses } from './search'
-import { useProcessData } from './useProcessData'
-
-const CACHE_TTL = 5000
+import { useProcessData, CACHE_TTL } from './useProcessData'
 
 interface Props {
   keyword: string

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 
-const CACHE_TTL = 5000
+export const CACHE_TTL = 5000
 
 function mergeData(rawList: ProcessRaw[], rawPorts: PortEntry[]): ProcessInfo[] {
   const portMap: Record<number, number[]> = {}
