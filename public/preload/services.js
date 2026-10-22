@@ -1,4 +1,6 @@
 const { exec, execFile, spawn } = require('node:child_process')
+const fs = require('node:fs')
+const path = require('node:path')
 
 const iconv = require('iconv-lite')
 
@@ -65,6 +67,37 @@ const PS_LIST_PROCESSES_ARGS = [
   'ConvertTo-Csv -NoTypeInformation'
 ]
 
+function parseNetstat(output) {
+  const lines = output.trim().replace(/\r/g, '').split('\n').filter(Boolean)
+  const ports = []
+  for (const line of lines) {
+    const parts = line.trim().split(/\s+/)
+    if (parts.length < 5) continue
+    const addr = parts[1]
+    const pid = parseInt(parts[4], 10)
+    if (!addr || isNaN(pid)) continue
+    const portMatch = addr.match(/:(\d+)$/)
+    if (portMatch) {
+      ports.push({ port: parseInt(portMatch[1], 10), pid, protocol: parts[0] })
+    }
+  }
+  return ports
+}
+
+function findWhoLocksScript() {
+  const bases = []
+  if (typeof __dirname === 'string') {
+    bases.push(__dirname, path.join(__dirname, '..'))
+  }
+  bases.push(process.cwd(), path.join(process.cwd(), 'preload'))
+
+  for (const base of bases) {
+    const candidate = path.join(base, 'who-locks.ps1')
+    if (fs.existsSync(candidate)) return candidate
+  }
+  return null
+}
+
 function runPowerShell(args, timeout, encoding = 'gbk') {
   return new Promise((resolve) => {
     execFile('powershell.exe', args, {
@@ -82,21 +115,26 @@ function runPowerShell(args, timeout, encoding = 'gbk') {
   })
 }
 
-function parseNetstat(output) {
-  const lines = output.trim().replace(/\r/g, '').split('\n').filter(Boolean)
-  const ports = []
-  for (const line of lines) {
-    const parts = line.trim().split(/\s+/)
-    if (parts.length < 5) continue
-    const addr = parts[1]
-    const pid = parseInt(parts[4], 10)
-    if (!addr || isNaN(pid)) continue
-    const portMatch = addr.match(/:(\d+)$/)
-    if (portMatch) {
-      ports.push({ port: parseInt(portMatch[1], 10), pid, protocol: parts[0] })
-    }
+function parseWhoLocks(output) {
+  const lines = output.replace(/\r/g, '').split('\n').filter(line => line.trim() !== '')
+  if (lines.length === 0 || lines[0].startsWith('No process is locking:')) {
+    return { success: true, holders: [] }
   }
-  return ports
+
+  const holders = []
+  for (const line of lines) {
+    const parts = line.split('\t')
+    if (parts[0] === 'PID') continue
+    const pid = parseInt(parts[0], 10)
+    if (!Number.isInteger(pid) || pid <= 0) return { success: false, error: line }
+    holders.push({
+      pid,
+      name: parts[1] || '',
+      service: parts[2] || '',
+      type: parts[3] ? parseInt(parts[3], 10) : undefined
+    })
+  }
+  return { success: true, holders }
 }
 
 window.services = {
@@ -126,6 +164,40 @@ window.services = {
   async scanPorts() {
     const raw = await execAsync('netstat -ano', 5000)
     return raw ? parseNetstat(raw) : []
+  },
+
+  async whoLocks(filePath) {
+    if (typeof filePath !== 'string' || !filePath.trim()) {
+      return { success: false, error: '无效的文件路径' }
+    }
+
+    const target = path.resolve(filePath.trim())
+    let stat
+    try {
+      stat = fs.statSync(target)
+    } catch {
+      return { success: false, error: `文件不存在: ${target}` }
+    }
+    if (!stat.isFile()) {
+      return { success: false, error: `不是文件: ${target}` }
+    }
+
+    const scriptPath = findWhoLocksScript()
+    if (!scriptPath) {
+      return { success: false, error: '未找到 who-locks.ps1' }
+    }
+
+    const { stdout, stderr } = await runPowerShell(
+      ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', scriptPath, target],
+      15000
+    )
+
+    if (!stdout.trim()) {
+      const message = stderr.trim().split(/\r?\n/)[0]
+      return { success: false, error: message || '查询失败' }
+    }
+
+    return parseWhoLocks(stdout)
   },
 
   async killProcess(pid) {
