@@ -1,34 +1,85 @@
-const { exec, spawn } = require('node:child_process')
+const { exec, execFile, spawn } = require('node:child_process')
 
 const iconv = require('iconv-lite')
 
-function execAsync(cmd, timeout) {
+function execAsync(cmd, timeout, encoding = 'gbk') {
   return new Promise((resolve) => {
     exec(cmd, { timeout, encoding: 'buffer' }, (err, stdout) => {
-      resolve(err ? '' : iconv.decode(stdout, 'gbk'))
+      resolve(err ? '' : iconv.decode(stdout, encoding))
     })
   })
 }
 
-function parseWmicCsv(output) {
-  const lines = output.trim().replace(/\r/g, '').split('\n').filter(Boolean)
+// 按 CSV 规则拆分，路径中可能含逗号或引号
+function parseCsvLine(line) {
+  const fields = []
+  let field = ''
+  let quoted = false
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]
+    if (quoted) {
+      if (ch !== '"') field += ch
+      else if (line[i + 1] === '"') { field += '"'; i++ }
+      else quoted = false
+    } else if (ch === '"') {
+      quoted = true
+    } else if (ch === ',') {
+      fields.push(field)
+      field = ''
+    } else {
+      field += ch
+    }
+  }
+  fields.push(field)
+  return fields
+}
+
+// 同时兼容 PowerShell 的 ConvertTo-Csv 与 wmic /FORMAT:CSV 输出
+function parseProcessCsv(output) {
+  const lines = output.replace(/^﻿/, '').trim().replace(/\r/g, '').split('\n').filter(Boolean)
   if (lines.length < 2) return []
-  const header = lines[0].split(',').map(h => h.trim().toLowerCase())
+  const header = parseCsvLine(lines[0]).map(h => h.trim().toLowerCase())
   const nameIdx = header.indexOf('name')
   const pidIdx = header.indexOf('processid')
   const pathIdx = header.indexOf('executablepath')
   if (nameIdx === -1 || pidIdx === -1) return []
 
   return lines.slice(1).map(line => {
-    const parts = line.startsWith('"')
-      ? line.replace(/^"|"$/g, '').split('","')
-      : line.split(',')
+    const parts = parseCsvLine(line)
     return {
       name: (parts[nameIdx] || '').trim(),
       pid: parseInt(parts[pidIdx], 10) || 0,
       path: (parts[pathIdx] || '').trim()
     }
   }).filter(p => p.pid > 0)
+}
+
+// Windows 11 24H2 起 wmic 默认不再安装，优先用 PowerShell 的 CIM 查询
+const PS_LIST_PROCESSES_ARGS = [
+  '-NoProfile',
+  '-NonInteractive',
+  '-Command',
+  '[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; ' +
+  'Get-CimInstance Win32_Process | ' +
+  'Select-Object ProcessId,Name,ExecutablePath | ' +
+  'ConvertTo-Csv -NoTypeInformation'
+]
+
+function runPowerShell(args, timeout, encoding = 'gbk') {
+  return new Promise((resolve) => {
+    execFile('powershell.exe', args, {
+      timeout,
+      windowsHide: true,
+      encoding: 'buffer',
+      maxBuffer: 1024 * 1024
+    }, (err, stdout, stderr) => {
+      resolve({
+        ok: !err,
+        stdout: stdout ? iconv.decode(stdout, encoding) : '',
+        stderr: stderr ? iconv.decode(stderr, encoding) : ''
+      })
+    })
+  })
 }
 
 function parseNetstat(output) {
@@ -50,15 +101,26 @@ function parseNetstat(output) {
 
 window.services = {
   async listProcesses() {
-    let raw = await execAsync('wmic process get ProcessId,Name,ExecutablePath /FORMAT:CSV', 8000)
-    if (raw) return parseWmicCsv(raw)
-    raw = await execAsync('tasklist /FO CSV /NH', 5000)
+    // PowerShell CIM：新系统上唯一稳定能拿到 ExecutablePath 的来源
+    const ps = await runPowerShell(PS_LIST_PROCESSES_ARGS, 8000, 'utf8')
+    const psList = parseProcessCsv(ps.stdout)
+    if (psList.length) return psList
+
+    // 旧系统兜底：wmic 仍在时优先用它，输出为 GBK
+    const wmicRaw = await execAsync('wmic process get ProcessId,Name,ExecutablePath /FORMAT:CSV', 8000)
+    if (wmicRaw) {
+      const wmicList = parseProcessCsv(wmicRaw)
+      if (wmicList.length) return wmicList
+    }
+
+    // 最后兜底：tasklist 没有路径列，仅保证进程列表可用
+    const raw = await execAsync('tasklist /FO CSV /NH', 5000)
     if (!raw) return []
-    const lines = raw.trim().replace(/\r/g, '').split('\n').filter(Boolean)
-    return lines.map(line => {
-      const parts = line.replace(/^"|"$/g, '').split('","')
-      return { name: parts[0] || '', pid: parseInt(parts[1], 10) || 0, path: '' }
-    }).filter(p => p.pid > 0)
+    return raw.trim().replace(/\r/g, '').split('\n').filter(Boolean)
+      .map(line => {
+        const parts = parseCsvLine(line)
+        return { name: parts[0] || '', pid: parseInt(parts[1], 10) || 0, path: '' }
+      }).filter(p => p.pid > 0)
   },
 
   async scanPorts() {

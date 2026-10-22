@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### 🐛 修复
+
+- **进程文件路径采集不到** — Windows 11 24H2 起 `wmic` 默认不再安装，原逻辑取路径失败后回退到 `tasklist`（无路径列），导致路径全部为空。现改为优先使用 PowerShell `Get-CimInstance Win32_Process` 获取 `ExecutablePath`，`wmic` 保留为旧系统兜底
+
+### 🧹 优化
+
+- preload 的 CSV 解析改为按 CSV 规则逐字段拆分，支持路径中包含逗号或引号
+- 主数据源解析失败时逐级回退（PowerShell → `wmic` → `tasklist`），不再出现“解析结果为空但不回退”
+
 ## [1.0.2] — 2026-08-29
 
 ### 🐛 修复
