@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## 1.1.1 - 2026-10-25
 
 ### ✨ 新增
 
