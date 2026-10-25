@@ -10,7 +10,7 @@
 ![Vite](https://img.shields.io/badge/Vite-6-646CFF)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-> 🤖 **本项目由 [Vibe Coding](https://github.com/nicepkg/vibe-coding) 维护** — AI 辅助驱动的开发模式，让想法快速变为代码。
+> 🤖 **本项目由 Vibe Coding 维护** — AI 辅助驱动的开发模式，让想法快速变为代码。
 
 ---
 

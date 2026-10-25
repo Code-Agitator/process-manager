@@ -84,7 +84,7 @@ function parseNetstat(output) {
   return ports
 }
 
-function findWhoLocksScript() {
+function findScript(name) {
   const bases = []
   if (typeof __dirname === 'string') {
     bases.push(__dirname, path.join(__dirname, '..'))
@@ -92,7 +92,7 @@ function findWhoLocksScript() {
   bases.push(process.cwd(), path.join(process.cwd(), 'preload'))
 
   for (const base of bases) {
-    const candidate = path.join(base, 'who-locks.ps1')
+    const candidate = path.join(base, name)
     if (fs.existsSync(candidate)) return candidate
   }
   return null
@@ -117,24 +117,84 @@ function runPowerShell(args, timeout, encoding = 'gbk') {
 
 function parseWhoLocks(output) {
   const lines = output.replace(/\r/g, '').split('\n').filter(line => line.trim() !== '')
-  if (lines.length === 0 || lines[0].startsWith('No process is locking:')) {
-    return { success: true, holders: [] }
+  const result = {
+    success: true,
+    holders: [],
+    kind: 'file',
+    scanned: 1,
+    truncated: false
   }
 
-  const holders = []
   for (const line of lines) {
+    if (line.startsWith('META\t')) {
+      const [, kind, scanned, truncated] = line.split('\t')
+      result.kind = kind === 'directory' ? 'directory' : 'file'
+      result.scanned = parseInt(scanned, 10) || 0
+      result.truncated = truncated === '1'
+      continue
+    }
+    if (line.startsWith('No process is locking:')) continue
+
     const parts = line.split('\t')
     if (parts[0] === 'PID') continue
     const pid = parseInt(parts[0], 10)
     if (!Number.isInteger(pid) || pid <= 0) return { success: false, error: line }
-    holders.push({
+    result.holders.push({
       pid,
       name: parts[1] || '',
       service: parts[2] || '',
       type: parts[3] ? parseInt(parts[3], 10) : undefined
     })
   }
-  return { success: true, holders }
+  return result
+}
+
+function parseDirHandles(output) {
+  const lines = output.replace(/\r/g, '').split('\n').filter(line => line.trim() !== '')
+  const result = {
+    success: true,
+    holders: [],
+    admin: false,
+    all: false,
+    candidates: 0,
+    mode: 'handles',
+    kind: 'directory'
+  }
+  const byPid = new Map()
+
+  for (const line of lines) {
+    if (line.startsWith('META\t')) {
+      const [, admin, all, candidates] = line.split('\t')
+      result.admin = admin === '1'
+      result.all = all === '1'
+      result.candidates = parseInt(candidates, 10) || 0
+      continue
+    }
+    if (line.startsWith('No handles found')) continue
+
+    const parts = line.split('\t')
+    if (parts[0] === 'PID') continue
+    const pid = parseInt(parts[0], 10)
+    if (!Number.isInteger(pid) || pid <= 0) return { success: false, error: line }
+
+    let entry = byPid.get(pid)
+    if (!entry) {
+      const rawName = parts[1] || ''
+      const name = rawName && !/\.exe$/i.test(rawName) ? `${rawName}.exe` : rawName
+      entry = { pid, name, handleCount: 0, handlePath: '', handlePaths: [] }
+      byPid.set(pid, entry)
+    }
+
+    entry.handleCount++
+    const handlePath = parts[3] || ''
+    if (handlePath && !entry.handlePaths.includes(handlePath)) {
+      entry.handlePaths.push(handlePath)
+      if (!entry.handlePath) entry.handlePath = handlePath
+    }
+  }
+
+  result.holders = Array.from(byPid.values())
+  return result
 }
 
 window.services = {
@@ -166,7 +226,27 @@ window.services = {
     return raw ? parseNetstat(raw) : []
   },
 
-  async whoLocks(filePath) {
+  pathInfo(filePath) {
+    if (typeof filePath !== 'string' || !filePath.trim()) {
+      return { success: false, exists: false, isFile: false, isDirectory: false, path: '' }
+    }
+
+    const target = path.resolve(filePath.trim())
+    try {
+      const stat = fs.statSync(target)
+      return {
+        success: true,
+        exists: true,
+        isFile: stat.isFile(),
+        isDirectory: stat.isDirectory(),
+        path: target
+      }
+    } catch {
+      return { success: false, exists: false, isFile: false, isDirectory: false, path: target }
+    }
+  },
+
+  async whoLocks(filePath, options = {}) {
     if (typeof filePath !== 'string' || !filePath.trim()) {
       return { success: false, error: '无效的文件路径' }
     }
@@ -176,28 +256,55 @@ window.services = {
     try {
       stat = fs.statSync(target)
     } catch {
-      return { success: false, error: `文件不存在: ${target}` }
+      return { success: false, error: `文件或目录不存在: ${target}` }
     }
-    if (!stat.isFile()) {
-      return { success: false, error: `不是文件: ${target}` }
+    if (!stat.isFile() && !stat.isDirectory()) {
+      return { success: false, error: `不是文件或目录: ${target}` }
     }
 
-    const scriptPath = findWhoLocksScript()
+    const isDirectory = stat.isDirectory()
+    const mode = options.mode === 'handles' || options.mode === 'files'
+      ? options.mode
+      : (isDirectory ? 'handles' : 'files')
+
+    if (mode === 'handles') {
+      const scriptPath = findScript('dir-handles.ps1')
+      if (!scriptPath) {
+        return { success: false, error: '未找到 dir-handles.ps1' }
+      }
+
+      const args = ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', scriptPath, '-Path', target]
+      if (options.all) args.push('-All')
+
+      const { stdout, stderr } = await runPowerShell(args, options.all ? 300000 : 30000)
+
+      if (!stdout.trim()) {
+        const message = stderr.trim().split(/\r?\n/)[0]
+        return { success: false, error: message || '检测失败' }
+      }
+
+      return parseDirHandles(stdout)
+    }
+
+    const scriptPath = findScript('who-locks.ps1')
     if (!scriptPath) {
       return { success: false, error: '未找到 who-locks.ps1' }
     }
 
-    const { stdout, stderr } = await runPowerShell(
-      ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', scriptPath, target],
-      15000
-    )
+    const args = ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', scriptPath, target]
+    if (options?.recurse) args.push('-Recurse')
+
+    const { stdout, stderr } = await runPowerShell(args, isDirectory ? 30000 : 15000)
 
     if (!stdout.trim()) {
       const message = stderr.trim().split(/\r?\n/)[0]
       return { success: false, error: message || '查询失败' }
     }
 
-    return parseWhoLocks(stdout)
+    const parsed = parseWhoLocks(stdout)
+    parsed.mode = 'files'
+    parsed.kind = parsed.kind || (isDirectory ? 'directory' : 'file')
+    return parsed
   },
 
   async killProcess(pid) {

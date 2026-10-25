@@ -389,6 +389,31 @@
   font-size: 10px;
 }
 
+.pm-mode-switch {
+  display: inline-flex;
+  gap: 2px;
+  margin-top: 5px;
+  padding: 2px;
+  border: 1px solid #e7dbc4;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, .45);
+}
+
+.pm-mode-switch button {
+  padding: 2px 7px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #8a7452;
+  font-size: 9.5px;
+  cursor: pointer;
+}
+
+.pm-mode-switch button.active {
+  background: #6b4f2a;
+  color: #fff;
+}
+
 .pm-btn-lock {
   flex-shrink: 0;
   min-width: 58px;
@@ -535,6 +560,13 @@
   cursor: default;
 }
 
+.pm-tag-handle {
+  border: 1px solid #e7dbc4;
+  background: #faf6ee;
+  color: #6b4f2a;
+  cursor: default;
+}
+
 .pm-friendly { color: #888; font-size: 10.5px; }
 .pm-missing { color: #b0b0c0; font-size: 10px; }
 .pm-empty-sub { color: #888; font-size: 11.5px; }
@@ -568,6 +600,36 @@
 
 .pm-kill-note svg { flex-shrink: 0; margin-top: 1px; }
 .pm-kill-note strong { color: inherit; font-weight: 600; }
+
+.pm-recurse {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  color: #888;
+  font-size: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.pm-recurse input {
+  width: 12px;
+  height: 12px;
+  margin: 0;
+  accent-color: #6b4f2a;
+  cursor: pointer;
+}
+
+.pm-lock-hint {
+  margin: 8px 16px 2px;
+  padding: 7px 10px;
+  border: 1px dashed #e7dbc4;
+  border-radius: 7px;
+  background: rgba(250, 246, 238, .55);
+  color: #8a7452;
+  font-size: 10.5px;
+  line-height: 1.6;
+}
 
 .pm-hint-path.active {
   background: #faf6ee;
@@ -717,6 +779,14 @@
   .pm-check-path { color: #8b949e; }
   .pm-check-note { color: #484f58; }
 
+  .pm-mode-switch {
+    border-color: rgba(224, 184, 122, .28);
+    background: rgba(224, 184, 122, .06);
+  }
+
+  .pm-mode-switch button { color: #c9a97a; }
+  .pm-mode-switch button.active { background: #d8b07a; color: #1b1206; }
+
   .pm-btn-lock {
     background: #d8b07a;
     color: #1b1206;
@@ -783,6 +853,12 @@
     color: #e0b87a;
   }
 
+  .pm-tag-handle {
+    border-color: rgba(224, 184, 122, .28);
+    background: rgba(224, 184, 122, .08);
+    color: #e0b87a;
+  }
+
   .pm-friendly { color: #8b949e; }
   .pm-missing { color: #484f58; }
   .pm-empty-sub { color: #8b949e; }
@@ -791,6 +867,15 @@
     border-color: rgba(248, 81, 73, .3);
     background: rgba(248, 81, 73, .08);
     color: #f0887e;
+  }
+
+  .pm-recurse { color: #8b949e; }
+  .pm-recurse input { accent-color: #d8b07a; }
+
+  .pm-lock-hint {
+    border-color: rgba(224, 184, 122, .28);
+    background: rgba(224, 184, 122, .06);
+    color: #c9a97a;
   }
 
   .pm-hint-path.active {

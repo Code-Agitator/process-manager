@@ -1,10 +1,43 @@
 param(
     [Parameter(Mandatory = $true, Position = 0)]
-    [string]$Path
+    [string]$Path,
+    [switch]$Recurse,
+    [int]$MaxFiles = 500
 )
 
-if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
-    throw "File not found: $Path"
+if (-not (Test-Path -LiteralPath $Path)) {
+    throw "Path not found: $Path"
+}
+
+if ($MaxFiles -lt 1) {
+    $MaxFiles = 500
+}
+
+$item = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
+$isDirectory = $item.PSIsContainer
+$kind = if ($isDirectory) { 'directory' } else { 'file' }
+$scanned = 0
+$truncated = $false
+$paths = @()
+
+if ($isDirectory) {
+    $files = @(Get-ChildItem -LiteralPath $Path -File -Force -Recurse:$Recurse -ErrorAction SilentlyContinue |
+        Select-Object -First ($MaxFiles + 1))
+    $truncated = $files.Count -gt $MaxFiles
+    if ($truncated) {
+        $files = $files[0..($MaxFiles - 1)]
+    }
+    $paths = @($files | ForEach-Object { $_.FullName })
+    $scanned = $paths.Count
+} else {
+    $paths = @($item.FullName)
+    $scanned = 1
+}
+
+if ($scanned -eq 0) {
+    Write-Output ("META`t{0}`t0`t0" -f $kind)
+    Write-Output "No process is locking: $($item.FullName)"
+    exit 0
 }
 
 Add-Type -TypeDefinition @"
@@ -61,7 +94,7 @@ public static class FileLock {
         [In, Out] RM_PROCESS_INFO[] rgAffectedApps,
         ref uint lpdwRebootReasons);
 
-    public static List<string> Who(string path) {
+    public static List<string> Who(string[] paths) {
         var result = new List<string>();
         uint handle;
         int rc = RmStartSession(out handle, 0, Guid.NewGuid().ToString());
@@ -70,7 +103,7 @@ public static class FileLock {
             return result;
         }
         try {
-            rc = RmRegisterResources(handle, 1, new[] { path }, 0, null, 0, null);
+            rc = RmRegisterResources(handle, (uint)paths.Length, paths, 0, null, 0, null);
             if (rc != 0) {
                 result.Add("RmRegisterResources failed: " + rc);
                 return result;
@@ -104,11 +137,11 @@ public static class FileLock {
 }
 "@
 
-$full = (Resolve-Path -LiteralPath $Path).Path
-$holders = [FileLock]::Who($full)
+Write-Output ("META`t{0}`t{1}`t{2}" -f $kind, $scanned, [int]$truncated)
+$holders = [FileLock]::Who($paths)
 
 if ($holders.Count -eq 0) {
-    Write-Output "No process is locking: $full"
+    Write-Output "No process is locking: $($item.FullName)"
 } else {
     Write-Output "PID`tProcess`tService`tType"
     $holders | ForEach-Object { Write-Output $_ }
