@@ -22,7 +22,7 @@ interface FileHolder {
   pid: number
   name: string
   service?: string
-  type?: number
+  type?: string
   handleCount?: number
   handlePath?: string
   handlePaths?: string[]
@@ -30,8 +30,6 @@ interface FileHolder {
 
 interface WhoLocksOptions {
   mode?: 'files' | 'handles'
-  recurse?: boolean
-  all?: boolean
 }
 
 interface WhoLocksResult {
@@ -40,11 +38,11 @@ interface WhoLocksResult {
   error?: string
   mode?: 'files' | 'handles'
   kind?: 'file' | 'directory'
-  scanned?: number
-  truncated?: boolean
-  admin?: boolean
-  all?: boolean
-  candidates?: number
+  method?: 'restart-manager' | 'handle-scan'
+  partial?: boolean
+  skipped?: number
+  timedOut?: number
+  examined?: number
 }
 
 interface PathInfoResult {

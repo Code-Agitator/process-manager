@@ -601,25 +601,6 @@
 .pm-kill-note svg { flex-shrink: 0; margin-top: 1px; }
 .pm-kill-note strong { color: inherit; font-weight: 600; }
 
-.pm-recurse {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 4px;
-  color: #888;
-  font-size: 10px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.pm-recurse input {
-  width: 12px;
-  height: 12px;
-  margin: 0;
-  accent-color: #6b4f2a;
-  cursor: pointer;
-}
-
 .pm-lock-hint {
   margin: 8px 16px 2px;
   padding: 7px 10px;
@@ -868,9 +849,6 @@
     background: rgba(248, 81, 73, .08);
     color: #f0887e;
   }
-
-  .pm-recurse { color: #8b949e; }
-  .pm-recurse input { accent-color: #d8b07a; }
 
   .pm-lock-hint {
     border-color: rgba(224, 184, 122, .28);

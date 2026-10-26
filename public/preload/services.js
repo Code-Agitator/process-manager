@@ -84,7 +84,7 @@ function parseNetstat(output) {
   return ports
 }
 
-function findScript(name) {
+function findAsset(name) {
   const bases = []
   if (typeof __dirname === 'string') {
     bases.push(__dirname, path.join(__dirname, '..'))
@@ -115,86 +115,58 @@ function runPowerShell(args, timeout, encoding = 'gbk') {
   })
 }
 
-function parseWhoLocks(output) {
-  const lines = output.replace(/\r/g, '').split('\n').filter(line => line.trim() !== '')
-  const result = {
-    success: true,
-    holders: [],
-    kind: 'file',
-    scanned: 1,
-    truncated: false
-  }
+const DETECTOR_NAME = 'win-file-lock-detector.exe'
 
-  for (const line of lines) {
-    if (line.startsWith('META\t')) {
-      const [, kind, scanned, truncated] = line.split('\t')
-      result.kind = kind === 'directory' ? 'directory' : 'file'
-      result.scanned = parseInt(scanned, 10) || 0
-      result.truncated = truncated === '1'
-      continue
-    }
-    if (line.startsWith('No process is locking:')) continue
-
-    const parts = line.split('\t')
-    if (parts[0] === 'PID') continue
-    const pid = parseInt(parts[0], 10)
-    if (!Number.isInteger(pid) || pid <= 0) return { success: false, error: line }
-    result.holders.push({
-      pid,
-      name: parts[1] || '',
-      service: parts[2] || '',
-      type: parts[3] ? parseInt(parts[3], 10) : undefined
-    })
-  }
-  return result
+function firstLine(text) {
+  return (text || '').trim().split(/\r?\n/)[0] || ''
 }
 
-function parseDirHandles(output) {
-  const lines = output.replace(/\r/g, '').split('\n').filter(line => line.trim() !== '')
-  const result = {
-    success: true,
-    holders: [],
-    admin: false,
-    all: false,
-    candidates: 0,
-    mode: 'handles',
-    kind: 'directory'
+// 检测器退出码：0 无占用，1 有占用，2 出错
+function runDetector(args, timeout) {
+  const exePath = findAsset(DETECTOR_NAME)
+  if (!exePath) {
+    return Promise.resolve({ error: `未找到 ${DETECTOR_NAME}` })
   }
+
+  return new Promise((resolve) => {
+    const child = execFile(exePath, args, {
+      timeout,
+      windowsHide: true,
+      encoding: 'buffer',
+      maxBuffer: 64 * 1024 * 1024
+    }, (err, stdout, stderr) => {
+      resolve({
+        pid: child.pid,
+        exitCode: err ? (typeof err.code === 'number' ? err.code : null) : 0,
+        timedOut: !!(err && err.killed),
+        spawnError: err && typeof err.code !== 'number' ? err.message : '',
+        stdout: stdout ? stdout.toString('utf8').replace(/^﻿/, '') : '',
+        stderr: stderr ? stderr.toString('utf8') : ''
+      })
+    })
+  })
+}
+
+function groupHandles(handles) {
   const byPid = new Map()
+  for (const handle of handles) {
+    if (!Number.isInteger(handle.pid) || handle.pid <= 0) continue
 
-  for (const line of lines) {
-    if (line.startsWith('META\t')) {
-      const [, admin, all, candidates] = line.split('\t')
-      result.admin = admin === '1'
-      result.all = all === '1'
-      result.candidates = parseInt(candidates, 10) || 0
-      continue
-    }
-    if (line.startsWith('No handles found')) continue
-
-    const parts = line.split('\t')
-    if (parts[0] === 'PID') continue
-    const pid = parseInt(parts[0], 10)
-    if (!Number.isInteger(pid) || pid <= 0) return { success: false, error: line }
-
-    let entry = byPid.get(pid)
+    let entry = byPid.get(handle.pid)
     if (!entry) {
-      const rawName = parts[1] || ''
-      const name = rawName && !/\.exe$/i.test(rawName) ? `${rawName}.exe` : rawName
-      entry = { pid, name, handleCount: 0, handlePath: '', handlePaths: [] }
-      byPid.set(pid, entry)
+      entry = { pid: handle.pid, name: handle.name || '', handleCount: 0, handlePath: '', handlePaths: [] }
+      byPid.set(handle.pid, entry)
     }
 
     entry.handleCount++
-    const handlePath = parts[3] || ''
+    const handlePath = handle.path || ''
     if (handlePath && !entry.handlePaths.includes(handlePath)) {
       entry.handlePaths.push(handlePath)
       if (!entry.handlePath) entry.handlePath = handlePath
     }
   }
 
-  result.holders = Array.from(byPid.values())
-  return result
+  return Array.from(byPid.values()).sort((a, b) => a.name.localeCompare(b.name) || a.pid - b.pid)
 }
 
 window.services = {
@@ -267,44 +239,74 @@ window.services = {
       ? options.mode
       : (isDirectory ? 'handles' : 'files')
 
-    if (mode === 'handles') {
-      const scriptPath = findScript('dir-handles.ps1')
-      if (!scriptPath) {
-        return { success: false, error: '未找到 dir-handles.ps1' }
+    // 单文件用 Restart Manager；目录和句柄模式都交给检测器做句柄枚举
+    const useRestartManager = !isDirectory && mode === 'files'
+    const args = [target, '--json']
+    if (!useRestartManager) args.push('--handles')
+
+    const scan = await runDetector(args, useRestartManager ? 20000 : 120000)
+    if (scan.error) {
+      return { success: false, error: scan.error }
+    }
+    if (scan.timedOut) {
+      return { success: false, error: '检测超时，进程句柄较多时请稍后重试' }
+    }
+    if (scan.exitCode !== 0 && scan.exitCode !== 1) {
+      return { success: false, error: firstLine(scan.stderr) || firstLine(scan.spawnError) || '检测失败' }
+    }
+
+    let data
+    try {
+      data = JSON.parse(scan.stdout)
+    } catch {
+      return { success: false, error: firstLine(scan.stderr) || '无法解析检测结果' }
+    }
+
+    if (data.method === 'restart-manager') {
+      const holders = (Array.isArray(data.processes) ? data.processes : [])
+        .filter(process => Number.isInteger(process.pid) && process.pid > 0)
+        .map(process => ({
+          pid: process.pid,
+          // 友好名称（如 Windows PowerShell）优先，与进程名不同时 UI 会单独标注
+          name: process.app_name || process.name || '',
+          service: process.service || undefined,
+          type: process.type || undefined
+        }))
+
+      return {
+        success: true,
+        mode: 'files',
+        kind: 'file',
+        method: 'restart-manager',
+        holders
       }
-
-      const args = ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', scriptPath, '-Path', target]
-      if (options.all) args.push('-All')
-
-      const { stdout, stderr } = await runPowerShell(args, options.all ? 300000 : 30000)
-
-      if (!stdout.trim()) {
-        const message = stderr.trim().split(/\r?\n/)[0]
-        return { success: false, error: message || '检测失败' }
-      }
-
-      return parseDirHandles(stdout)
     }
 
-    const scriptPath = findScript('who-locks.ps1')
-    if (!scriptPath) {
-      return { success: false, error: '未找到 who-locks.ps1' }
+    const skipped = Array.isArray(data.skipped_processes) ? data.skipped_processes : []
+    const timedOut = Array.isArray(data.timed_out_processes) ? data.timed_out_processes : []
+    let handles = Array.isArray(data.handles) ? data.handles : []
+
+    // 检测器自身的工作目录句柄也会出现在结果里
+    if (Number.isInteger(scan.pid)) {
+      handles = handles.filter(handle => handle.pid !== scan.pid)
+    }
+    // 目录句柄模式只看文件夹句柄，目录内文件模式只看文件句柄
+    if (isDirectory) {
+      const objectKind = mode === 'handles' ? 'directory' : 'file'
+      handles = handles.filter(handle => handle.object === objectKind)
     }
 
-    const args = ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', scriptPath, target]
-    if (options?.recurse) args.push('-Recurse')
-
-    const { stdout, stderr } = await runPowerShell(args, isDirectory ? 30000 : 15000)
-
-    if (!stdout.trim()) {
-      const message = stderr.trim().split(/\r?\n/)[0]
-      return { success: false, error: message || '查询失败' }
+    return {
+      success: true,
+      mode,
+      kind: isDirectory ? 'directory' : 'file',
+      method: 'handle-scan',
+      holders: groupHandles(handles),
+      partial: skipped.length > 0 || timedOut.length > 0,
+      skipped: skipped.length,
+      timedOut: timedOut.length,
+      examined: data.examined_handles || 0
     }
-
-    const parsed = parseWhoLocks(stdout)
-    parsed.mode = 'files'
-    parsed.kind = parsed.kind || (isDirectory ? 'directory' : 'file')
-    return parsed
   },
 
   async killProcess(pid) {

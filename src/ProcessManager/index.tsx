@@ -51,18 +51,13 @@ export default function ProcessManager({ keyword }: Props) {
   const [lockSource, setLockSource] = useState<LockSource>('keyword')
   const [lockKind, setLockKind] = useState<'file' | 'directory'>('file')
   const [lockMode, setLockMode] = useState<DirectoryMode>('files')
-  const [lockAll, setLockAll] = useState(false)
-  const [lockAdmin, setLockAdmin] = useState(true)
-  const [lockScanned, setLockScanned] = useState(1)
-  const [lockTruncated, setLockTruncated] = useState(false)
-  const [lockRecurse, setLockRecurse] = useState(false)
+  const [lockPartial, setLockPartial] = useState(false)
+  const [lockSkipped, setLockSkipped] = useState(0)
   const [holders, setHolders] = useState<FileHolder[]>([])
   const [lockError, setLockError] = useState('')
   const [clearedByKill, setClearedByKill] = useState(false)
   const [pathKind, setPathKind] = useState<PathKind>(null)
   const [directoryMode, setDirectoryMode] = useState<DirectoryMode>('handles')
-  const [fullScan, setFullScan] = useState(false)
-  const [recurse, setRecurse] = useState(false)
   const lockRequest = useRef(0)
   const lockKeyword = useRef('')
 
@@ -103,8 +98,6 @@ export default function ProcessManager({ keyword }: Props) {
 
   // 区分文件与目录；目录默认做句柄检测
   useEffect(() => {
-    setRecurse(false)
-    setFullScan(false)
     setDirectoryMode('handles')
     const target = normalizePath(keyword)
     if (!isPathLike(target)) {
@@ -141,7 +134,7 @@ export default function ProcessManager({ keyword }: Props) {
   const runWhoLocks = useCallback(async (
     path: string,
     source: LockSource,
-    options?: { mode?: DirectoryMode; recurse?: boolean; all?: boolean }
+    options?: { mode?: DirectoryMode }
   ) => {
     const target = normalizePath(path)
     if (!target) return
@@ -152,8 +145,6 @@ export default function ProcessManager({ keyword }: Props) {
       : checkingDirectory
         ? (options?.mode || directoryMode)
         : 'files'
-    const allOption = selectedMode === 'handles' && !!options?.all
-    const recurseOption = !!options?.recurse
 
     lockKeyword.current = normalizePath(keyword)
     const requestId = ++lockRequest.current
@@ -163,10 +154,8 @@ export default function ProcessManager({ keyword }: Props) {
     setLockSource(source)
     setLockKind(checkingDirectory ? 'directory' : 'file')
     setLockMode(selectedMode)
-    setLockAll(allOption)
-    setLockRecurse(recurseOption)
-    setLockScanned(1)
-    setLockTruncated(false)
+    setLockPartial(false)
+    setLockSkipped(0)
     setLockStatus('loading')
     setHolders([])
     setLockError('')
@@ -179,20 +168,14 @@ export default function ProcessManager({ keyword }: Props) {
     }
 
     try {
-      const result = await window.services.whoLocks(target, {
-        mode: selectedMode,
-        recurse: recurseOption,
-        all: allOption
-      })
+      const result = await window.services.whoLocks(target, { mode: selectedMode })
       if (requestId !== lockRequest.current) return
       if (result.success) {
         setHolders(result.holders || [])
         setLockMode(result.mode === 'handles' ? 'handles' : 'files')
         setLockKind(result.kind === 'directory' ? 'directory' : 'file')
-        setLockAll(!!result.all)
-        setLockAdmin(result.mode === 'handles' ? !!result.admin : true)
-        setLockScanned(typeof result.scanned === 'number' ? result.scanned : 1)
-        setLockTruncated(!!result.truncated)
+        setLockPartial(!!result.partial)
+        setLockSkipped(result.skipped || 0)
         setLockStatus('done')
       } else {
         setLockError(result.error || '查询失败')
@@ -212,11 +195,8 @@ export default function ProcessManager({ keyword }: Props) {
     setLockStatus('idle')
     setLockKind('file')
     setLockMode('files')
-    setLockAll(false)
-    setLockAdmin(true)
-    setLockScanned(1)
-    setLockTruncated(false)
-    setLockRecurse(false)
+    setLockPartial(false)
+    setLockSkipped(0)
     setHolders([])
     setLockError('')
     setClearedByKill(false)
@@ -267,21 +247,19 @@ export default function ProcessManager({ keyword }: Props) {
 
   const footerCount = (() => {
     if (!lockView) return `共 ${filtered.length} 个结果`
-    if (lockStatus === 'loading') {
-      if (lockMode === 'handles') return '正在检测…'
-      return lockKind === 'directory' ? '正在扫描…' : '正在检查…'
-    }
+    const isDirectory = lockKind === 'directory'
+    if (lockStatus === 'loading') return '正在检测…'
     if (lockStatus === 'error') return '检查失败'
     if (holders.length > 0) {
-      return lockMode === 'handles' ? `${holders.length} 个句柄持有者` : `${holders.length} 个占用进程`
+      if (lockMode === 'handles') return `${holders.length} 个句柄持有者`
+      return isDirectory ? `${holders.length} 个文件句柄持有者` : `${holders.length} 个占用进程`
     }
     if (clearedByKill) {
-      if (lockMode === 'handles') return '已结束句柄占用'
-      return lockKind === 'directory' ? '已结束占用' : '占用已解除'
+      if (lockMode === 'handles') return '已结束目录句柄占用'
+      return isDirectory ? '已结束目录内占用' : '占用已解除'
     }
-    if (lockMode === 'handles') return '未发现句柄'
-    if (lockKind === 'directory' && lockScanned === 0) return '目录内无文件'
-    return '未发现占用'
+    if (lockMode === 'handles') return '未发现目录句柄'
+    return isDirectory ? '未发现文件句柄占用' : '未发现占用'
   })()
 
   const renderContext = () => {
@@ -323,40 +301,18 @@ export default function ProcessManager({ keyword }: Props) {
                 ? '路径不存在或无法访问'
                 : isDirectory
                   ? (handlesMode
-                      ? '检测目录及子目录的句柄持有者 · 需要管理员权限'
-                      : '扫描目录内文件 · 最多 500 个')
-                  : 'Restart Manager · 首次约 1–2 秒'}
+                      ? '检测目录及子目录的文件夹句柄 · 需要管理员权限'
+                      : '检测目录内文件（含子目录）的句柄 · 需要管理员权限')
+                  : 'Restart Manager · 首次约 1 秒'}
             </div>
-            {handlesMode && (
-              <label className="pm-recurse">
-                <input
-                  type="checkbox"
-                  checked={fullScan}
-                  onChange={(e) => setFullScan(e.target.checked)}
-                />
-                全量扫描（较慢）
-              </label>
-            )}
-            {isDirectory && directoryMode === 'files' && (
-              <label className="pm-recurse">
-                <input
-                  type="checkbox"
-                  checked={recurse}
-                  onChange={(e) => setRecurse(e.target.checked)}
-                />
-                包含子目录
-              </label>
-            )}
           </div>
           <button
             className="pm-btn-lock"
             onClick={() => runWhoLocks(target, 'keyword', {
-              mode: isDirectory ? directoryMode : 'files',
-              recurse,
-              all: fullScan
+              mode: isDirectory ? directoryMode : 'files'
             })}
           >
-            {isDirectory ? (handlesMode ? '检测' : '扫描文件') : '检查'}
+            {isDirectory ? '检测' : '检查'}
           </button>
         </div>
       )
@@ -373,19 +329,19 @@ export default function ProcessManager({ keyword }: Props) {
               {handlesMode
                 ? '正在检测目录句柄'
                 : isDirectory
-                  ? '正在扫描目录内文件'
+                  ? '正在检测目录内文件'
                   : '正在检查文件占用'} <span className="pm-spinner" />
             </div>
             <div className="pm-check-path" title={lockPath}>{lockPath}</div>
             <div className="pm-check-note">
               {handlesMode
-                ? (lockAll ? '全量扫描，可能需要几分钟' : '候选进程扫描 · 包含 Explorer、终端、IDE、同步盘')
+                ? '正在枚举系统句柄，通常需要 1–3 秒'
                 : isDirectory
-                  ? '正在收集目录内文件并合并占用结果'
-                  : '首次查询需要启动 PowerShell 并编译脚本'}
+                  ? '正在枚举系统句柄并筛选目录内文件'
+                  : '正在通过 Restart Manager 查询'}
             </div>
           </div>
-          <button className="pm-btn-lock" disabled>{handlesMode ? '检测中…' : isDirectory ? '扫描中…' : '检查中…'}</button>
+          <button className="pm-btn-lock" disabled>{handlesMode ? '检测中…' : '检查中…'}</button>
         </div>
       )
     }
@@ -402,7 +358,7 @@ export default function ProcessManager({ keyword }: Props) {
             </div>
             <div className="pm-check-path" title={lockError}>{lockError}</div>
             <div className="pm-check-note">
-              {handlesMode
+              {isDirectory
                 ? '完整检测需要管理员权限，或路径不可访问。'
                 : '如果路径位于受保护目录，尝试以管理员身份运行 ZTools。'}
             </div>
@@ -411,11 +367,7 @@ export default function ProcessManager({ keyword }: Props) {
             <button className="pm-btn-ghost" onClick={backToList}>返回</button>
             <button
               className="pm-btn-lock"
-              onClick={() => runWhoLocks(lockPath, lockSource, {
-                mode: lockMode,
-                recurse: lockRecurse,
-                all: lockAll
-              })}
+              onClick={() => runWhoLocks(lockPath, lockSource, { mode: lockMode })}
             >
               重试
             </button>
@@ -430,13 +382,13 @@ export default function ProcessManager({ keyword }: Props) {
     const handlesMode = lockMode === 'handles'
     const title = handlesMode
       ? (count > 0
-          ? `${count} 个进程持有目录句柄`
+          ? `${count} 个进程持有目录/子目录句柄`
           : cleared ? '已结束目录句柄占用' : '未发现目录句柄持有者')
       : (count > 0
-          ? (isDirectory ? `${count} 个进程正在占用目录内文件` : `${count} 个进程正在占用`)
+          ? (isDirectory ? `${count} 个进程持有目录内文件句柄` : `${count} 个进程正在占用`)
           : cleared
             ? (isDirectory ? '已结束目录内占用' : '占用已解除')
-            : (isDirectory ? '未发现目录内文件被占用' : '未发现占用'))
+            : (isDirectory ? '未发现目录内文件句柄持有者' : '未发现占用'))
 
     return (
       <div className="pm-lock-summary">
@@ -446,16 +398,12 @@ export default function ProcessManager({ keyword }: Props) {
         <div className="pm-check-main">
           <div className="pm-check-title">{title}</div>
           <div className="pm-check-path" title={lockPath}>{lockPath}</div>
-          {handlesMode ? (
+          {isDirectory ? (
             <div className="pm-check-note">
-              {lockAll ? '全量扫描' : '候选进程扫描'}
-              {lockAdmin ? '' : ' · 非管理员，结果可能不完整'}
-            </div>
-          ) : isDirectory ? (
-            <div className="pm-check-note">
-              已扫描 {lockScanned} 个文件
-              {lockRecurse ? '（含子目录）' : ''}
-              {lockTruncated ? ' · 已达 500 个上限' : ''}
+              {handlesMode ? '目录与子目录文件夹句柄' : '目录内文件句柄（含子目录）'}
+              {lockPartial
+                ? ` · ${lockSkipped > 0 ? `${lockSkipped} 个进程无法检查` : '部分进程无法检查'}，需管理员权限`
+                : ''}
             </div>
           ) : null}
         </div>
@@ -475,17 +423,15 @@ export default function ProcessManager({ keyword }: Props) {
             {handlesMode
               ? '正在检测目录句柄…'
               : isDirectory
-                ? '正在扫描目录内文件…'
+                ? '正在检测目录内文件…'
                 : '正在检查文件占用…'}
           </div>
           <div className="pm-state-text">
             {handlesMode
-              ? (lockAll
-                  ? '正在枚举全系统进程句柄，进程较多时可能需要几分钟。'
-                  : '正在扫描 Explorer、终端、IDE、同步盘等候选进程的目录句柄。')
+              ? '正在枚举系统句柄，进程较多时可能需要几秒。'
               : isDirectory
-                ? '正在收集目录内的文件并交给 Restart Manager 查询。首次查询通常需要 1–2 秒，文件较多时会稍慢。'
-                : '首次查询会启动 PowerShell 并编译 Restart Manager 脚本，通常需要 1–2 秒。之后的查询会更快。'}
+                ? '正在枚举系统句柄并筛选目录内文件。'
+                : '正在通过 Restart Manager 查询文件占用。'}
           </div>
         </div>
       )
@@ -493,26 +439,19 @@ export default function ProcessManager({ keyword }: Props) {
 
     if (lockStatus === 'error') {
       const isDirectory = lockKind === 'directory'
-      const handlesMode = lockMode === 'handles'
       return (
         <StateBlock
           kind="error"
           icon={<FiAlertTriangle size={20} />}
           title="检查失败"
-          text={handlesMode
-            ? '句柄枚举没有返回结果。完整检测需要管理员权限；也可以尝试全量扫描。'
-            : isDirectory
-              ? 'Restart Manager 没有返回结果。可以重试，或检查目录是否可访问。'
-              : 'Restart Manager 没有返回结果。可以重试，或检查文件是否位于受保护目录。'}
+          text={isDirectory
+            ? '句柄枚举没有返回结果。完整检测需要管理员权限，或路径不可访问。'
+            : 'Restart Manager 没有返回结果。可以重试，或检查文件是否位于受保护目录。'}
           actions={(
             <>
               <button
                 className="pm-btn-lock"
-                onClick={() => runWhoLocks(lockPath, lockSource, {
-                  mode: lockMode,
-                  recurse: lockRecurse,
-                  all: lockAll
-                })}
+                onClick={() => runWhoLocks(lockPath, lockSource, { mode: lockMode })}
               >
                 重试
               </button>
@@ -524,11 +463,14 @@ export default function ProcessManager({ keyword }: Props) {
     }
 
     if (holderViews.length > 0) {
-      if (lockMode === 'handles') {
+      if (lockKind === 'directory') {
+        const filesMode = lockMode === 'files'
         return (
           <>
             <div className="pm-lock-hint">
-              这些进程持有目录或子目录的句柄，不是目录内文件被占用。Explorer、终端和同步盘通常属于这种情况。
+              {filesMode
+                ? '这些进程持有目录内文件的句柄（含子目录），路径为其中一个被占用的文件。'
+                : '这些进程持有目录或子目录本身的文件夹句柄，不是目录内文件。Explorer、终端和同步盘通常属于这种情况。'}
             </div>
             {holderViews.map(({ holder, process: proc }) => {
               const name = proc ? proc.name : (holder.name || `PID ${holder.pid}`)
@@ -546,14 +488,14 @@ export default function ProcessManager({ keyword }: Props) {
                       <div className="pm-item-row1">
                         <span className="pm-tag pm-tag-name" title={proc?.path} onClick={() => copy(name)}>{name}</span>
                         <span className="pm-tag pm-tag-pid" onClick={() => copy(String(holder.pid))}>{holder.pid}</span>
-                        <span className="pm-tag pm-tag-handle">目录句柄</span>
+                        <span className="pm-tag pm-tag-handle">{filesMode ? '文件句柄' : '目录句柄'}</span>
                         {handlePath ? (
                           <span className="pm-path" onClick={() => copy(handlePath)} title={handlePath}>{handlePath}</span>
                         ) : null}
                       </div>
                       <div className="pm-tags">
                         <span className="pm-friendly">
-                          {pathCount > 1 ? `${pathCount} 个句柄路径` : '持有目录/子目录句柄'}
+                          {pathCount > 1 ? `${pathCount} 个句柄路径` : (filesMode ? '持有目录内文件句柄' : '持有目录/子目录句柄')}
                         </span>
                         {!proc ? <span className="pm-missing">进程信息未在列表中，可能已退出或列表缓存过期</span> : null}
                       </div>
@@ -566,15 +508,8 @@ export default function ProcessManager({ keyword }: Props) {
         )
       }
 
-      const isDirectory = lockKind === 'directory'
       return (
         <>
-          {isDirectory && (
-            <div className="pm-lock-hint">
-              结果为占用目录内任意文件的进程合集，不区分具体文件
-              {lockTruncated ? '；本次仅扫描前 500 个文件' : ''}。
-            </div>
-          )}
           {holderViews.map(({ holder, process: proc }) => {
             const name = proc ? proc.name : (holder.name || `PID ${holder.pid}`)
             const friendly = proc && holder.name && holder.name.toLowerCase() !== name.toLowerCase()
@@ -645,44 +580,12 @@ export default function ProcessManager({ keyword }: Props) {
           kind="unlock"
           icon={<FiUnlock size={20} />}
           title="未发现目录句柄持有者"
-          text={lockAll
-            ? '已完成全量扫描。如果目录仍无法删除，可能是受保护进程或权限不足。'
-            : '已扫描候选进程（Explorer、终端、IDE、同步盘等）。可能持有者在候选列表之外；可以尝试全量扫描（较慢）。完整检测需要管理员权限。'}
-          actions={lockAll ? (
-            <>
-              <button
-                className="pm-btn-lock"
-                onClick={() => runWhoLocks(lockPath, lockSource, { mode: 'handles', all: true })}
-              >
-                重新检测
-              </button>
-              <button className="pm-btn-lock pm-btn-secondary" onClick={backToList}>返回进程列表</button>
-            </>
-          ) : (
-            <>
-              <button
-                className="pm-btn-lock"
-                onClick={() => runWhoLocks(lockPath, lockSource, { mode: 'handles', all: true })}
-              >
-                全量扫描
-              </button>
-              <button className="pm-btn-lock pm-btn-secondary" onClick={backToList}>返回进程列表</button>
-            </>
-          )}
-        />
-      )
-    }
-
-    if (isDirectory && lockScanned === 0) {
-      return (
-        <StateBlock
-          kind="unlock"
-          icon={<FiUnlock size={20} />}
-          title="目录内没有可扫描的文件"
-          text="该目录为空或没有可读取的文件。如果目录本身仍无法删除，可能是文件夹句柄被占用，可以切回“目录句柄”模式检测。"
+          text={lockPartial
+            ? `已扫描全部可访问进程${lockSkipped > 0 ? `，其中 ${lockSkipped} 个无法检查` : ''}。如果目录仍无法删除，尝试以管理员身份运行 ZTools 获取完整结果。`
+            : '已扫描全部进程。如果目录仍无法删除，可能是受保护进程或权限不足。'}
           actions={(
             <>
-              <button className="pm-btn-lock" onClick={() => runWhoLocks(lockPath, lockSource, { mode: 'files', recurse: lockRecurse })}>重新扫描</button>
+              <button className="pm-btn-lock" onClick={() => runWhoLocks(lockPath, lockSource, { mode: 'handles' })}>重新检测</button>
               <button className="pm-btn-lock pm-btn-secondary" onClick={backToList}>返回进程列表</button>
             </>
           )}
@@ -696,10 +599,10 @@ export default function ProcessManager({ keyword }: Props) {
           kind="unlock"
           icon={<FiUnlock size={20} />}
           title="未发现目录内文件被占用"
-          text={`已扫描 ${lockScanned} 个文件。如果目录仍然无法删除，可能是 Explorer、终端或同步盘持有文件夹句柄；可以切回“目录句柄”模式检测。`}
+          text="没有进程持有目录内文件的句柄。如果目录仍然无法删除，可能是 Explorer、终端或同步盘持有文件夹本身的句柄；可以切回“目录句柄”模式检测。"
           actions={(
             <>
-              <button className="pm-btn-lock" onClick={() => runWhoLocks(lockPath, lockSource, { mode: 'files', recurse: lockRecurse })}>重新扫描</button>
+              <button className="pm-btn-lock" onClick={() => runWhoLocks(lockPath, lockSource, { mode: 'files' })}>重新检测</button>
               <button className="pm-btn-lock pm-btn-secondary" onClick={backToList}>返回进程列表</button>
             </>
           )}
@@ -715,7 +618,7 @@ export default function ProcessManager({ keyword }: Props) {
         text="如果文件仍然无法删除，可能是系统服务或杀毒软件在瞬时扫描。稍等片刻再检查。"
         actions={(
           <>
-            <button className="pm-btn-lock" onClick={() => runWhoLocks(lockPath, lockSource, { mode: 'files', recurse: lockRecurse })}>重新检查</button>
+            <button className="pm-btn-lock" onClick={() => runWhoLocks(lockPath, lockSource, { mode: 'files' })}>重新检查</button>
             <button className="pm-btn-lock pm-btn-secondary" onClick={backToList}>返回进程列表</button>
           </>
         )}
@@ -756,7 +659,7 @@ export default function ProcessManager({ keyword }: Props) {
                     <br />
                     <span className="pm-empty-sub">
                       {pathKind === 'directory'
-                        ? '可以在上方检测目录句柄，或切换为扫描目录内文件。'
+                        ? '可以在上方检测目录句柄，或切换为「目录内文件」检测。'
                         : '可以在上方检查是哪个进程占用了该文件。'}
                     </span>
                   </>
