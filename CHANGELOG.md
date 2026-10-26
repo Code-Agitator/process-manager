@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.2.0 - 2026-10-26
 
-### 🧹 优化
+### 🧹 重构
 
 - **文件与目录占用检测改用内置检测器** — `public/win-file-lock-detector.exe` 取代 `who-locks.ps1` 与 `dir-handles.ps1`：单文件走 Restart Manager，目录走系统句柄扫描，不再依赖 PowerShell 现场编译 C#，也不再受 500 个文件上限限制
 - **目录检测语义更明确** — “目录句柄”只列出目录及子目录本身的文件夹句柄，“目录内文件”只列出目录内文件的句柄，并展示具体被占用的路径
